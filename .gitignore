@@ -20,7 +20,7 @@ ENV/
 
 # ── Dataset — never commit (465 MB, provided by organiser) ────────────────────
 track1_data_ai/data/candidates.jsonl
-track1_data_ai/data/sample_candidates.json
+# sample_candidates.json (294 KB) IS committed — needed for Streamlit sandbox
 
 # ── Organiser-provided docs (redundant in repo, available in bundle) ──────────
 track1_data_ai/docs/
