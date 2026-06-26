@@ -19,9 +19,18 @@ Key data insight (from EDA on 100K candidates):
     candidate actually shipped retrieval/ranking/search work to real users.
 """
 
+import re
 from datetime import date
 
 TODAY = date(2026, 6, 26)
+
+# Matches quantified business impact: "12%", "10M users", "50m+ queries", etc.
+# Only meaningful in a lowercased engineering job description.
+_METRIC_RE = re.compile(
+    r"\b\d+\.?\d*\s*%"
+    r"|\b\d+\s*[mk]\+?\s*(users|queries|requests|searches)"
+    r"|\b\d+\s*(million|billion)\s*(users|queries|requests)"
+)
 
 # ---------------------------------------------------------------------------
 # 0. CAREER DESCRIPTION KEYWORD SETS
@@ -79,12 +88,14 @@ _TIER_5 = {
 _TIER_4 = {
     "data scientist", "senior data scientist",
     "senior software engineer (ml)", "computer vision engineer",
-    "ai specialist", "junior ml engineer",
+    "ai specialist",
     "analytics engineer", "senior data engineer",
     "backend engineer", "senior software engineer",
     "data engineer",
 }
 _TIER_3 = {
+    # JD explicitly: "If you're a solid Junior ML Engineer, this is not the role for you."
+    "junior ml engineer",
     "software engineer", "full stack developer", "cloud engineer",
     "devops engineer", "data analyst", "java developer",
     ".net developer", "mobile developer", "frontend engineer",
@@ -121,16 +132,20 @@ def role_relevance_score(candidate: dict) -> float:
     current_title_raw = candidate["profile"]["current_title"]
     current_tier = _title_tier(current_title_raw)
 
-    # AI Research Engineer: check whether descriptions suggest research or production
+    # AI Research Engineer: demote if descriptions show research > production,
+    # OR if they show CV-only work with no retrieval/IR exposure.
     if "research engineer" in current_title_raw.lower():
-        all_desc = " ".join(
+        all_desc = " " + " ".join(
             r.get("description", "") for r in candidate.get("career_history", [])
-        ).lower().replace("-", " ")
-        research_hits = sum(1 for w in _RESEARCH_DESC_FLAGS if w in all_desc)
-        prod_hits = sum(1 for w in _PROD_DESC_SIGNALS if w in all_desc)
-        retrieval_hits = sum(1 for w in _RETRIEVAL_DESC_SIGNALS if w in all_desc)
+        ).lower().replace("-", " ") + " "
+        research_hits  = sum(1 for w in _RESEARCH_DESC_FLAGS    if w in all_desc)
+        prod_hits      = sum(1 for w in _PROD_DESC_SIGNALS       if w in all_desc)
+        retrieval_hits = sum(1 for w in _RETRIEVAL_DESC_SIGNALS  if w in all_desc)
+        cv_hits        = sum(1 for w in _CV_DESC_FLAGS           if w in all_desc)
         if research_hits >= 2 and (prod_hits + retrieval_hits) < 2:
-            current_tier = min(current_tier, 3)  # demote pure researchers
+            current_tier = min(current_tier, 3)  # pure researcher — JD red flag
+        elif cv_hits >= 2 and retrieval_hits == 0:
+            current_tier = min(current_tier, 3)  # CV-only — JD: "you'd be re-learning fundamentals"
 
     past_titles = [
         r["title"] for r in candidate.get("career_history", [])
@@ -208,37 +223,56 @@ def skills_match_score(candidate: dict) -> float:
 #     to real users at meaningful scale."
 # ---------------------------------------------------------------------------
 
-def career_description_score(candidate: dict) -> float:
-    """
-    Keyword analysis of all career_history descriptions.
-    Rewards: production-deployment signals + retrieval/search/ranking work + LLMs.
-    Penalises: pure-research signals (papers/conferences) and CV-only work.
-    Returns [0, 1].
-    """
-    raw_text = " ".join(
-        r.get("description", "") for r in candidate.get("career_history", [])
-    ).lower()
-    # Normalise hyphens → spaces so "learning-to-rank" matches "learning to rank",
-    # "re-rank" matches "re rank", etc. Both forms are kept in the keyword sets.
-    all_text = " " + raw_text.replace("-", " ") + " "
+def _score_one_description(desc: str) -> float:
+    """Score a single role's description. Returns raw (unnormalized) value."""
+    t = " " + desc.lower().replace("-", " ") + " "
 
-    prod_count     = sum(1 for w in _PROD_DESC_SIGNALS      if w in all_text)
-    retrieval_count = sum(1 for w in _RETRIEVAL_DESC_SIGNALS if w in all_text)
-    llm_count      = sum(1 for w in _LLM_DESC_SIGNALS        if w in all_text)
-    research_count = sum(1 for w in _RESEARCH_DESC_FLAGS     if w in all_text)
-    cv_count       = sum(1 for w in _CV_DESC_FLAGS           if w in all_text)
+    prod_count      = sum(1 for w in _PROD_DESC_SIGNALS      if w in t)
+    retrieval_count = sum(1 for w in _RETRIEVAL_DESC_SIGNALS  if w in t)
+    llm_count       = sum(1 for w in _LLM_DESC_SIGNALS        if w in t)
+    research_count  = sum(1 for w in _RESEARCH_DESC_FLAGS     if w in t)
+    cv_count        = sum(1 for w in _CV_DESC_FLAGS           if w in t)
 
     prod_score      = min(prod_count / 4,      1.0) * 0.35
     retrieval_score = min(retrieval_count / 5, 1.0) * 0.50
     llm_score       = min(llm_count / 4,       1.0) * 0.30
-
     research_penalty = min(research_count / 3, 1.0) * 0.40
-    # CV-only penalty only if no retrieval or LLM signals present
     cv_penalty = (min(cv_count / 3, 1.0) * 0.20
                   if retrieval_count == 0 and llm_count == 0 else 0.0)
 
-    raw = prod_score + retrieval_score + llm_score - research_penalty - cv_penalty
-    return max(0.0, min(raw / 1.15, 1.0))   # 1.15 = theoretical max positive
+    # Specificity bonus: quantified business impact ("12%", "10M users", "50m queries")
+    # distinguishes candidates who describe real outcomes from those using template language.
+    specificity = 0.08 if _METRIC_RE.search(t) else 0.0
+
+    return prod_score + retrieval_score + llm_score - research_penalty - cv_penalty + specificity
+
+
+def career_description_score(candidate: dict) -> float:
+    """
+    Per-role keyword analysis.
+    The JD says "has shipped at least ONE end-to-end ranking/search/rec system" —
+    a candidate who built stellar retrieval at one company and wrote CRUD at another
+    is a stronger signal than one who has mediocre retrieval work averaged across all.
+
+    Scoring: 75% weight on best single-role score + 25% on mean of all roles.
+    Penalises: pure-research signals, CV-only work. Rewards: quantified business impact.
+    Returns [0, 1].
+    """
+    career = candidate.get("career_history", [])
+    if not career:
+        return 0.0
+
+    role_scores = [
+        _score_one_description(r.get("description", ""))
+        for r in career
+    ]
+
+    best = max(role_scores)
+    mean_all = sum(role_scores) / len(role_scores)
+    combined = 0.75 * best + 0.25 * mean_all
+
+    # Max positive per role: 0.35 + 0.50 + 0.30 + 0.08 = 1.23
+    return max(0.0, min(combined / 1.23, 1.0))
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +419,8 @@ def location_score(candidate: dict) -> float:
         return 0.45 if willing else 0.25
     if country in {"uk", "united kingdom", "australia", "canada", "usa",
                    "united states", "germany"}:
-        return 0.35 if willing else 0.12
+        # JD: no visa sponsorship; western relocation = high personal friction.
+        return 0.22 if willing else 0.08
     return 0.18 if willing else 0.08
 
 
