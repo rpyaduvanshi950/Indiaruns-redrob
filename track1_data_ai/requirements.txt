@@ -1,0 +1,3 @@
+# No external dependencies — pure stdlib only.
+# This ranker uses only Python standard library (json, csv, datetime, argparse, pathlib).
+# This satisfies the 5-min CPU constraint: no model downloads, no heavy installs.
