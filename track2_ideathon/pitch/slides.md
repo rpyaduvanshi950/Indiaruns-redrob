@@ -4,22 +4,82 @@ theme: default
 paginate: true
 style: |
   section {
-    font-family: 'Inter', sans-serif;
-    background: #0f172a;
-    color: #f1f5f9;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: #ffffff;
+    color: #1e293b;
+    padding: 48px 56px;
   }
-  h1 { color: #38bdf8; font-size: 2.2rem; }
-  h2 { color: #7dd3fc; border-bottom: 2px solid #38bdf8; padding-bottom: 8px; }
-  h3 { color: #bae6fd; }
-  strong { color: #fbbf24; }
-  em { color: #a5f3fc; }
-  table { border-collapse: collapse; width: 100%; }
-  th { background: #1e3a5f; color: #38bdf8; padding: 10px; }
-  td { padding: 10px; border: 1px solid #334155; }
-  blockquote { background: #1e293b; border-left: 4px solid #38bdf8; padding: 16px 20px; border-radius: 4px; margin: 12px 0; }
-  blockquote p { margin: 0; }
-  code { background: #1e293b; color: #7dd3fc; }
-  pre { background: #1e293b; padding: 16px; border-radius: 6px; border: 1px solid #334155; }
+  h1 {
+    color: #0f172a;
+    font-size: 2.2rem;
+    font-weight: 700;
+    border-bottom: 4px solid #6366f1;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+  }
+  h2 {
+    color: #1e293b;
+    font-size: 1.6rem;
+    font-weight: 700;
+    border-bottom: 2px solid #6366f1;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  h3 { color: #4338ca; font-size: 1.1rem; font-weight: 600; margin-top: 12px; }
+  strong { color: #4338ca; }
+  em { color: #6366f1; font-style: normal; font-weight: 600; }
+  ul, ol { color: #334155; line-height: 1.7; }
+  p { color: #334155; line-height: 1.6; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 8px;
+    font-size: 0.88rem;
+  }
+  th {
+    background: #6366f1;
+    color: #ffffff;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 9px 14px;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  tr:nth-child(odd) td { background: #ffffff; }
+  blockquote {
+    background: #eef2ff;
+    border-left: 4px solid #6366f1;
+    padding: 14px 20px;
+    border-radius: 4px;
+    margin: 12px 0;
+    color: #312e81;
+  }
+  blockquote p { margin: 0; color: #312e81; }
+  code {
+    background: #f1f5f9;
+    color: #4338ca;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+  pre {
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 16px 20px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+  pre code { background: none; color: #1e293b; padding: 0; }
+  section::after {
+    color: #94a3b8;
+    font-size: 0.75rem;
+  }
 ---
 
 # Bharat Score
