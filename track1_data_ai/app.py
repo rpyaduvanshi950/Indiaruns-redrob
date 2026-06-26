@@ -32,6 +32,12 @@ st.set_page_config(
     layout="wide",
 )
 
+# ── session state — candidates must survive the rerender triggered by "Run ranker"
+if "candidates" not in st.session_state:
+    st.session_state.candidates = []
+if "source_label" not in st.session_state:
+    st.session_state.source_label = ""
+
 # ── header ────────────────────────────────────────────────────────────────────
 st.title("🎯 SignalSutra — Intelligent Candidate Ranker")
 st.caption(
@@ -55,7 +61,10 @@ with st.sidebar:
 | Location | 10% |
 | Notice period | 5% |
 
-**Career descriptions** — keyword analysis of what the candidate actually built: production-deployment signals, retrieval/search/ranking work, LLM fine-tuning. The JD's hardest check: "Has shipped at least one end-to-end ranking/search/rec system to real users."
+**Career descriptions** — keyword analysis of what the candidate actually built:
+production-deployment signals, retrieval/search/ranking work, LLM fine-tuning.
+The JD's hardest check: *"Has shipped at least one end-to-end ranking/search/rec
+system to real users."*
 
 **Behavioural multiplier:** ×0.50–1.25
 Activity recency · OTW flag · Response rate
@@ -64,8 +73,8 @@ Interview completion · GitHub · Profile completeness
 **Honeypot detection:**
 Duration mismatch · Expert + 0 months · Too many expert skills → forced to 0
 
-**Runtime:** ~15 s for 100 K candidates on CPU.
-No GPU · No network · No external packages.
+**Runtime:** ~58 s for 100 K candidates on CPU.
+No GPU · No network · No external packages for the ranker.
     """)
     st.divider()
     st.markdown("**Reproduce locally:**")
@@ -76,7 +85,7 @@ No GPU · No network · No external packages.
         language="bash",
     )
 
-# ── input section ─────────────────────────────────────────────────────────────
+# ── 1 · Load candidates ───────────────────────────────────────────────────────
 st.subheader("1 · Load candidates")
 
 col_upload, col_sample = st.columns([3, 2])
@@ -92,35 +101,42 @@ with col_sample:
     st.markdown("&nbsp;")
     use_sample = st.button("Use built-in sample (50 candidates)", use_container_width=True)
 
-# ── load candidates ───────────────────────────────────────────────────────────
-candidates = []
-
+# ── populate session state when a source is chosen ───────────────────────────
 if uploaded is not None:
     raw = uploaded.read().decode("utf-8").strip()
+    parsed = []
     for line in raw.splitlines():
         line = line.strip()
         if not line:
             continue
         try:
-            candidates.append(json.loads(line))
+            parsed.append(json.loads(line))
         except json.JSONDecodeError:
             st.error(f"Could not parse line: {line[:80]}…")
             st.stop()
-    if len(candidates) > 100:
-        st.warning(f"Uploaded {len(candidates)} candidates — truncating to first 100 per sandbox limit.")
-        candidates = candidates[:100]
-    st.success(f"Loaded {len(candidates)} candidates from upload.")
+    if len(parsed) > 100:
+        st.warning(f"Truncating {len(parsed)} → 100 candidates (sandbox limit).")
+        parsed = parsed[:100]
+    st.session_state.candidates = parsed
+    st.session_state.source_label = f"uploaded file · {len(parsed)} candidates"
 
 elif use_sample:
     sample_path = _ROOT / "data" / "sample_candidates.json"
     if not sample_path.exists():
-        st.error("sample_candidates.json not found. Please upload a JSONL file instead.")
+        st.error("sample_candidates.json not found in the repo. Please upload a JSONL file.")
         st.stop()
     with open(sample_path) as f:
-        candidates = json.load(f)
-    st.success(f"Loaded {len(candidates)} built-in sample candidates.")
+        loaded = json.load(f)
+    st.session_state.candidates = loaded
+    st.session_state.source_label = f"built-in sample · {len(loaded)} candidates"
 
-# ── rank ──────────────────────────────────────────────────────────────────────
+# ── read from session state (survives the rerender triggered by "Run ranker") ─
+candidates = st.session_state.candidates
+
+if candidates:
+    st.success(f"✓ Loaded — {st.session_state.source_label}")
+
+# ── 2 · Rank ──────────────────────────────────────────────────────────────────
 if candidates:
     st.divider()
     st.subheader("2 · Rank")
@@ -147,7 +163,10 @@ if candidates:
                 "components": components,
                 "is_honeypot": flagged,
             })
-            progress.progress((i + 1) / len(candidates), text=f"Scored {i+1}/{len(candidates)}")
+            progress.progress(
+                (i + 1) / len(candidates),
+                text=f"Scored {i + 1}/{len(candidates)}",
+            )
 
         progress.empty()
 
@@ -160,7 +179,9 @@ if candidates:
         hi, lo = top[0]["score"], top[-1]["score"]
         span = hi - lo if hi != lo else 1.0
         for entry in top:
-            entry["score_out"] = round(0.20 + (entry["score"] - lo) / span * (0.992 - 0.20), 4)
+            entry["score_out"] = round(
+                0.20 + (entry["score"] - lo) / span * (0.992 - 0.20), 4
+            )
 
         elapsed = time.time() - t0
 
@@ -193,15 +214,13 @@ if candidates:
                 "ID": c["candidate_id"],
                 "Title": p["current_title"],
                 "YoE": p["years_of_experience"],
-                "Location": f"{p.get('location','')}, {p.get('country','')}",
+                "Location": f"{p.get('location', '')}, {p.get('country', '')}",
                 "OTW": "✓" if sig.get("open_to_work_flag") else "—",
-                "Resp %": f"{sig.get('recruiter_response_rate',0)*100:.0f}%",
+                "Resp %": f"{sig.get('recruiter_response_rate', 0) * 100:.0f}%",
                 "Notice (d)": sig.get("notice_period_days", "—"),
                 "Reasoning": reasoning,
             })
-            csv_rows.append([
-                c["candidate_id"], rank, entry["score_out"], reasoning
-            ])
+            csv_rows.append([c["candidate_id"], rank, entry["score_out"], reasoning])
 
         st.dataframe(
             table_rows,
@@ -234,12 +253,10 @@ if candidates:
             type="primary",
         )
 
-        # ── score distribution chart ──────────────────────────────────────────
+        # ── score distribution ────────────────────────────────────────────────
         with st.expander("Score distribution"):
-            import json as _json
-            scores_only = [r["score_out"] for r in top]
             st.bar_chart(
-                {"Score": scores_only},
+                {"Score": [r["score_out"] for r in top]},
                 x_label="Rank",
                 y_label="Score",
             )

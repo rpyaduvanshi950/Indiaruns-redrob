@@ -62,7 +62,7 @@ Rule-based multi-signal ranker with six components and a behavioral multiplier:
 
 **Honeypot detection:** 191 candidates flagged via duration mismatch, expert+0-months skills, or impossible profile combinations — all forced to score 0, none appear in top 100.
 
-**Compute:** Pure Python arithmetic. No model inference, no embeddings, no network. Full 100K dataset scored in ~35 seconds.
+**Compute:** Pure Python arithmetic. No model inference, no embeddings, no network. Full 100K dataset scored in ~58 seconds.
 
 ---
 
