@@ -24,7 +24,7 @@ python rank.py \
 python track1_data_ai/submission/validate_submission.py submission.csv
 ```
 
-**Runtime:** ~35 seconds on CPU with 16 GB RAM. No GPU, no network, no external packages.
+**Runtime:** ~58 seconds on CPU with 16 GB RAM. No GPU, no network, no external packages for the ranker (Streamlit required only for the sandbox app).
 
 ### Structure
 

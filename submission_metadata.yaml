@@ -83,8 +83,9 @@ methodology_summary: |
   duration mismatch >3 months, expert-rated skill with 0 months duration,
   ≥6 expert skills. 191 candidates flagged, all forced to score 0.
 
-  Runtime: ~15 seconds for 100K candidates on CPU. Pure Python stdlib; no
-  external packages, no embeddings, no network calls.
+  Runtime: ~58 seconds for 100K candidates on CPU (well within 300s limit).
+  Pure Python stdlib for the ranker; no external packages, no embeddings,
+  no network calls during ranking.
 
 # ============================================================================
 # Declarations
