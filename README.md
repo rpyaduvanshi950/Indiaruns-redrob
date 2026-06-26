@@ -15,17 +15,16 @@ Submission repository for **India Runs by Redrob AI** on Hack2Skill.
 # 1. Obtain candidates.jsonl from the organiser bundle and place it at:
 #    track1_data_ai/data/candidates.jsonl
 
-# 2. Run (no installs needed — pure Python stdlib):
-python track1_data_ai/src/rank.py \
+# 2. Run from repo root (no installs needed — pure Python stdlib):
+python rank.py \
   --candidates track1_data_ai/data/candidates.jsonl \
-  --out track1_data_ai/submission/submission.csv
+  --out submission.csv
 
 # 3. Validate:
-python track1_data_ai/submission/validate_submission.py \
-  track1_data_ai/submission/submission.csv
+python track1_data_ai/submission/validate_submission.py submission.csv
 ```
 
-**Runtime:** ~15 seconds on CPU with 16 GB RAM. No GPU, no network, no external packages.
+**Runtime:** ~35 seconds on CPU with 16 GB RAM. No GPU, no network, no external packages.
 
 ### Structure
 
@@ -47,20 +46,23 @@ track1_data_ai/
 
 ### Approach summary
 
-Rule-based multi-signal ranker with five components and a behavioral multiplier:
+Rule-based multi-signal ranker with six components and a behavioral multiplier:
 
 | Component | Weight | Key signal |
 |---|---|---|
-| Role relevance | 35% | Current title tier (ML/AI Engineer = tier 5) + career history |
-| Skills match | 25% | JD-critical skills (NLP, vector DBs, Python, BM25…) weighted by proficiency + endorsements |
-| Experience quality | 20% | Years in range (5–9 preferred) × company type (product vs. consulting) |
-| Location | 10% | Noida/Pune preferred (1.10×), India top cities (1.0×), abroad penalised |
-| Notice period | 10% | Sub-30 days = 1.0, 90+ days = 0.40 |
-| Behavioral multiplier | ×0.30–1.40 | Activity recency, OTW flag, recruiter response rate, interview completion, GitHub activity |
+| Role relevance | 25% | Current title tier (ML/AI Engineer = tier 5) + career history; AI Research Engineers demoted if descriptions show research > production signals |
+| Skills match | 25% | JD-critical skills (NLP, vector DBs, Python, BM25…) weighted by proficiency + endorsements + duration |
+| **Career descriptions** | **20%** | Keyword analysis of `career_history[].description`: production-deployment signals, retrieval/search/ranking work, LLM fine-tuning. Penalises pure-research signals. |
+| Experience quality | 15% | Years in range (5–9 preferred) × company type (product vs. consulting/BPO) + salary sanity |
+| Location | 10% | Noida/Pune preferred (1.10×), India top cities (1.0×), abroad without relocation willingness penalised heavily |
+| Notice period | 5% | Sub-30 days = 1.0, 90+ days = 0.40 |
+| Behavioral multiplier | ×0.50–1.25 | Activity recency (28%), OTW flag (18%), recruiter response rate (22%), interview completion (14%), GitHub (10%), profile completeness (8%) |
+
+**Career descriptions** are the novel component: the JD's hardest requirement is "has shipped at least one end-to-end ranking/search/rec system to real users at meaningful scale." Keyword matching on actual career descriptions surfaces this signal without any LLM or embedding at runtime.
 
 **Honeypot detection:** 191 candidates flagged via duration mismatch, expert+0-months skills, or impossible profile combinations — all forced to score 0, none appear in top 100.
 
-**Compute:** Scores are computed with pure Python arithmetic. No model inference, no embeddings at runtime. Full 100K dataset scored in ~15 seconds.
+**Compute:** Pure Python arithmetic. No model inference, no embeddings, no network. Full 100K dataset scored in ~35 seconds.
 
 ---
 

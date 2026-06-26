@@ -44,17 +44,20 @@ st.divider()
 with st.sidebar:
     st.header("How it works")
     st.markdown("""
-**5 scoring components:**
+**6 scoring components:**
 
 | Component | Weight |
 |---|---|
-| Role relevance | 35% |
+| Role relevance | 25% |
 | Skills match | 25% |
-| Experience quality | 20% |
+| Career descriptions | 20% |
+| Experience quality | 15% |
 | Location | 10% |
-| Notice period | 10% |
+| Notice period | 5% |
 
-**Behavioural multiplier:** ×0.30–1.40
+**Career descriptions** — keyword analysis of what the candidate actually built: production-deployment signals, retrieval/search/ranking work, LLM fine-tuning. The JD's hardest check: "Has shipped at least one end-to-end ranking/search/rec system to real users."
+
+**Behavioural multiplier:** ×0.50–1.25
 Activity recency · OTW flag · Response rate
 Interview completion · GitHub · Profile completeness
 
@@ -67,8 +70,8 @@ No GPU · No network · No external packages.
     st.divider()
     st.markdown("**Reproduce locally:**")
     st.code(
-        "python track1_data_ai/src/rank.py \\\n"
-        "  --candidates candidates.jsonl \\\n"
+        "python rank.py \\\n"
+        "  --candidates track1_data_ai/data/candidates.jsonl \\\n"
         "  --out submission.csv",
         language="bash",
     )
@@ -252,6 +255,7 @@ if candidates:
                     "Title": c["profile"]["current_title"][:28],
                     "Role": round(comp.get("role", 0), 3),
                     "Skills": round(comp.get("skills", 0), 3),
+                    "Desc": round(comp.get("career_desc", 0), 3),
                     "Exp": round(comp.get("experience", 0), 3),
                     "Loc": round(comp.get("location", 0), 3),
                     "Notice": round(comp.get("notice", 0), 3),

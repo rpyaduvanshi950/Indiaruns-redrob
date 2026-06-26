@@ -1,0 +1,97 @@
+# Redrob Hackathon — Submission Metadata
+# Team: SignalSutra
+
+# ============================================================================
+# Team identity
+# ============================================================================
+team_name: "SignalSutra"
+
+primary_contact:
+  name: "Pushpender"
+  email: "rpyaduvanshi950@gmail.com"
+  phone: "+91-9257009192"
+
+team_members:
+  - name: "Pushpender"
+    email: "rpyaduvanshi950@gmail.com"
+    role: "Solo participant"
+
+# ============================================================================
+# Code and reproducibility
+# ============================================================================
+github_repo: "https://github.com/rpyaduvanshi950/Indiaruns-redrob"
+
+sandbox_link: "https://signalsutra.streamlit.app/"
+# Streamlit Community Cloud deployment. Accepts JSONL file upload (≤100 candidates)
+# or built-in 50-candidate sample. Runs end-to-end, produces downloadable CSV.
+
+reproduce_command: "python rank.py --candidates track1_data_ai/data/candidates.jsonl --out submission.csv"
+# Run from repo root. rank.py is a thin wrapper over track1_data_ai/src/rank.py.
+# candidates.jsonl must be obtained from the organiser bundle and placed at the path above.
+
+# ============================================================================
+# Compute environment
+# ============================================================================
+compute:
+  platform: "Linux (Ubuntu 22.04 LTS)"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.11"
+  os: "Ubuntu 22.04 LTS"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: false
+  pre_computation_time_minutes: 0
+
+# ============================================================================
+# AI tools declaration
+# ============================================================================
+ai_tools_used:
+  - "Claude (claude-sonnet-4-6)"
+
+ai_usage_summary: |
+  Used Claude for architecture discussion, scoring weight rationale, code review,
+  and debugging. All engineering decisions, skill taxonomy design, honeypot
+  detection logic, and final scoring weights are original work. No candidate
+  data was fed to any LLM at any point.
+
+# ============================================================================
+# Approach summary
+# ============================================================================
+methodology_summary: |
+  Rule-based multi-signal ranker with six scoring components and a behavioural
+  multiplier. The key insight from EDA: JD-critical skills (PyTorch, Milvus,
+  BM25, QLoRA) appear ~1,300 times across 100K candidates vs. ~12,000 for
+  noise skills (AWS, Docker) — rarity is the real signal.
+
+  Six components (weights): role relevance 25%, skills match 25%,
+  career description 20%, experience quality 15%, location 10%, notice 5%.
+
+  The career_description component is the most novel: keyword analysis of
+  career_history[].description fields surfaces whether a candidate actually
+  shipped ranking/search/recommendation systems to real users — the JD's
+  single hardest requirement. Keywords cover production signals (shipped,
+  deployed, latency), retrieval/search (FAISS, BM25, semantic search, NDCG),
+  and LLM work (fine-tuning, RAG, LoRA). Research signals (arxiv, paper,
+  conference) are penalised.
+
+  Behavioural multiplier [0.50, 1.25] weights activity recency (28%),
+  OTW flag (18%), recruiter response rate (22%), interview completion (14%),
+  GitHub activity (10%), profile completeness/verification (8%).
+
+  Honeypot detection (5 signals): end-before-start dates, future end dates,
+  duration mismatch >3 months, expert-rated skill with 0 months duration,
+  ≥6 expert skills. 191 candidates flagged, all forced to score 0.
+
+  Runtime: ~15 seconds for 100K candidates on CPU. Pure Python stdlib; no
+  external packages, no embeddings, no network calls.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true
+  reproduction_tested: true

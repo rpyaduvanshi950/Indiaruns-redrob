@@ -91,6 +91,9 @@ def write_submission(ranked: list[dict], out_path: str, team_id: str = "submissi
     top100 = ranked[:100]
     _normalise_scores(ranked)  # sets score_rounded on top 100 in-place
 
+    # Re-sort by rounded score so tie-breaks use candidate_id ascending (spec requirement)
+    top100.sort(key=lambda x: (-x["score_rounded"], x["candidate"]["candidate_id"]))
+
     # Verify score is non-increasing (spec requirement)
     scores = [r["score_rounded"] for r in top100]
     for i in range(len(scores) - 1):
@@ -123,6 +126,7 @@ def print_top_n(ranked: list[dict], n: int = 20) -> None:
         comp = entry["components"]
         role_s  = comp.get("role", 0)
         skill_s = comp.get("skills", 0)
+        desc_s  = comp.get("career_desc", 0)
         exp_s   = comp.get("experience", 0)
         bm      = comp.get("behavioral_mult", 0)
         title = p["current_title"][:37]
@@ -132,7 +136,8 @@ def print_top_n(ranked: list[dict], n: int = 20) -> None:
             f"{title:<38} {p['years_of_experience']:<5.1f} {loc}"
         )
         print(
-            f"      role={role_s:.3f} skills={skill_s:.3f} exp={exp_s:.3f} bm={bm:.3f}"
+            f"      role={role_s:.3f} skills={skill_s:.3f} "
+            f"desc={desc_s:.3f} exp={exp_s:.3f} bm={bm:.3f}"
             + (f"  [HONEYPOT-but-scored?]" if entry["is_honeypot"] else "")
         )
     print(f"{'='*90}\n")
