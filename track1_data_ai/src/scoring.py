@@ -30,17 +30,21 @@ TODAY = date(2026, 6, 26)
 
 _PROD_DESC_SIGNALS = frozenset({
     "shipped", "ship ", "deployed", "production", "serving",
-    "real-time", "realtime", "endpoint", "launched", "live ",
+    "real-time", "real time", "realtime", "endpoint", "launched", "live ",
     "a/b test", "scale", "latency", "throughput", "users",
-    "traffic", "customers",
+    "traffic", "customers", "revenue", "queries per",
 })
 _RETRIEVAL_DESC_SIGNALS = frozenset({
     "ranking", "retrieval", "recommendation", "semantic search",
+    " search ", "search product", "search feature", "search system",
     "vector search", "embedding", "faiss", "milvus", "qdrant",
     "weaviate", "pinecone", "opensearch", "elasticsearch", "bm25",
-    "hybrid search", "learning to rank", "reranking", "re-rank",
+    "hybrid search", "learning to rank", "learning-to-rank",
+    "reranking", "re-rank", "re rank",
     "nearest neighbor", "ann search", "knowledge base",
     "information retrieval", "search engine", "ndcg",
+    "relevance", "query", "relevance score", "click-through",
+    "click through", "lambdamart", "lambda mart", "lambdarank",
 })
 _LLM_DESC_SIGNALS = frozenset({
     "fine-tun", "fine tuning", "lora", "qlora", "peft", " rag ",
@@ -121,7 +125,7 @@ def role_relevance_score(candidate: dict) -> float:
     if "research engineer" in current_title_raw.lower():
         all_desc = " ".join(
             r.get("description", "") for r in candidate.get("career_history", [])
-        ).lower()
+        ).lower().replace("-", " ")
         research_hits = sum(1 for w in _RESEARCH_DESC_FLAGS if w in all_desc)
         prod_hits = sum(1 for w in _PROD_DESC_SIGNALS if w in all_desc)
         retrieval_hits = sum(1 for w in _RETRIEVAL_DESC_SIGNALS if w in all_desc)
@@ -211,9 +215,12 @@ def career_description_score(candidate: dict) -> float:
     Penalises: pure-research signals (papers/conferences) and CV-only work.
     Returns [0, 1].
     """
-    all_text = " " + " ".join(
+    raw_text = " ".join(
         r.get("description", "") for r in candidate.get("career_history", [])
-    ).lower() + " "
+    ).lower()
+    # Normalise hyphens → spaces so "learning-to-rank" matches "learning to rank",
+    # "re-rank" matches "re rank", etc. Both forms are kept in the keyword sets.
+    all_text = " " + raw_text.replace("-", " ") + " "
 
     prod_count     = sum(1 for w in _PROD_DESC_SIGNALS      if w in all_text)
     retrieval_count = sum(1 for w in _RETRIEVAL_DESC_SIGNALS if w in all_text)
